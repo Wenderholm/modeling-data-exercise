@@ -1,8 +1,13 @@
 package edu.wsb.modelingdataexercise.person;
 
+import edu.wsb.modelingdataexercise.company.Company;
+import edu.wsb.modelingdataexercise.company.CompanyRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.InvalidParameterException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Iterator;
 import java.util.Optional;
 
@@ -10,24 +15,40 @@ import java.util.Optional;
 @RequestMapping("/people")
 public class PersonController {
 
+    private final PersonService personService;
+
     private final PersonRepository personRepository;
+    private final CompanyRepository companyRepository;
+    private final AuthorityRepository authorityRepository;
+
     @Autowired
-    public PersonController(PersonRepository personRepository) {
+    public PersonController(PersonService personService, PersonRepository personRepository, CompanyRepository companyRepository, AuthorityRepository authorityRepository) {
+        this.personService = personService;
         this.personRepository = personRepository;
+        this.companyRepository = companyRepository;
+        this.authorityRepository = authorityRepository;
     }
+
     @GetMapping("/list")
     public Iterable<Person> list() {
-
-        Iterable<Person> people = personRepository.findAll();
-        for (Person person: people ){
-            System.out.println("Person " + person);
-
-        }
-        return people;
+        return personRepository.findAll();
     }
+
     @PostMapping("/save")
     public Person save(@RequestParam String username, @RequestParam String password) {
         Person person = new Person(username, password, true);
+        return personRepository.save(person);
+    }
+
+    @PostMapping("/saveWithCompany")
+    public Person saveWithCompany(@RequestParam String username,@RequestParam String lastName, @RequestParam String password, @RequestParam String companyName) {
+        Company company = new Company(companyName);
+        companyRepository.save(company);
+
+
+        Person person = new Person(username, password, true);
+        person.setCompany(company);
+        person.setLastName(lastName);
         return personRepository.save(person);
     }
 
@@ -41,4 +62,54 @@ public class PersonController {
         return personRepository.findByUsernameAndEnabled(username, true);
     }
 
+    /**
+     * GET http://localhost:8080/people/list-sorted?dateString=2021-02-13T10:30-0000
+     *
+     * @param dateString data ze strefą czasową, np. 2021-02-13T10:30-0000
+     * @return lista rekordów `person`
+     * @throws ParseException w przypadku błędnego formatu daty
+     */
+    @GetMapping("/list-created-after")
+    public Iterable<Person> listCreatedAfter(@RequestParam String dateString)
+            throws ParseException {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mmZ");
+
+        return personRepository.findEnabledUsersCreatedAfter(sdf.parse(dateString));
+    }
+
+    @PostMapping("/disable")
+    public Optional<Person> disable(@RequestParam String username) {
+        Optional<Person> person = personRepository.findByUsernameAndEnabled(username, true);
+        person.ifPresent((value) -> {
+            value.setEnabled(false);
+            personRepository.save(value);
+        });
+        return person;
+    }
+
+    @GetMapping("{username}/authorities")
+    public Iterable<Authority> getAuthorities(@PathVariable String username) {
+        return authorityRepository.findAllByPersonUsername(username);
+    }
+
+    @PostMapping("{username}/authorities")
+    public Person addAuthority(@PathVariable String username, @RequestParam String authority) {
+        Optional<Person> optPerson = personRepository.findByUsernameAndEnabled(username, true);
+
+        if (optPerson.isEmpty()) {
+            throw new InvalidParameterException("No user found");
+        }
+
+        Optional<Authority> optAuthority = authorityRepository.findByAuthority(Authority.ROLE_PREFIX + authority);
+
+        if (optAuthority.isEmpty()) {
+            throw new InvalidParameterException("No authority found");
+        }
+
+        Person person = optPerson.get();
+
+        personService.addAuthority(person, optAuthority.get());
+
+        return person;
+    }
 }

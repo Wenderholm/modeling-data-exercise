@@ -1,45 +1,65 @@
 package edu.wsb.modelingdataexercise.person;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import edu.wsb.modelingdataexercise.company.Company;
+import edu.wsb.modelingdataexercise.enums.State;
 import org.hibernate.annotations.ColumnDefault;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.util.Date;
+import java.util.Set;
 
 @Entity
 public class Person {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 99)
+    @ManyToOne
+    @JoinColumn(name = "company_id", nullable = false)
+    @JsonIgnoreProperties("people")
+    private Company company;
+
+    @Column(nullable = false, unique = true, length = 100)
     private String username;
 
-    @Column (length = 100)
     private String firstName;
 
+    @Column(nullable = false)
     private String lastName;
-
-
-    @Column (nullable = false, length = 100)
-    private String password;
-    private Boolean enabled;
 
     @Column(nullable = false)
     @ColumnDefault("false")
-    private  Boolean passwordExpired;
-    private Date dataCreated;
+    private Boolean passwordExpired;
 
+//    @Enumerated(EnumType.STRING)
+//    private State state = State.PENDING;
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(nullable = false)
+    private Boolean enabled;
+
+    private Date dateCreated;
+
+    @ManyToMany
+    @JoinTable(name = "person_authorities",
+            joinColumns = @JoinColumn(name = "person_id"),
+            inverseJoinColumns = @JoinColumn(name = "authority_id"))
+    Set<Authority> authorities;
 
     public Person(String username, String password, Boolean enabled) {
         this.username = username;
         this.password = password;
         this.enabled = enabled;
+        this.dateCreated = new Date();
         this.passwordExpired = false;
-        this.dataCreated = new Date();
     }
 
     protected Person() {
@@ -49,16 +69,24 @@ public class Person {
         return username;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     public String getPassword() {
         return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public Boolean getEnabled() {
@@ -69,13 +97,24 @@ public class Person {
         this.enabled = enabled;
     }
 
-    public Date getDataCreated() {
-        return dataCreated;
+    public Date getDateCreated() {
+        return dateCreated;
     }
 
-    public void setDataCreated(Date dataCreated) {
-        this.dataCreated = dataCreated;
+    @Override
+    public String toString() {
+        return String.format("%s (#%s)", username, id);
     }
 
+    public Company getCompany() {
+        return company;
+    }
 
+    public void setCompany(Company company) {
+        this.company = company;
+    }
+
+//    public State getState() {
+//        return state;
+//    }
 }
