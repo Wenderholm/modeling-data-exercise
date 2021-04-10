@@ -33,8 +33,8 @@ public class Person {
     @ColumnDefault("false")
     private Boolean passwordExpired;
 
-//    @Enumerated(EnumType.STRING)
-//    private State state = State.PENDING;
+    @Enumerated(EnumType.STRING)
+    private State state = State.PENDING;
 
     public void setPassword(String password) {
         this.password = password;
@@ -114,7 +114,8 @@ public class Person {
         this.company = company;
     }
 
-//    public State getState() {
-//        return state;
-//    }
+
+    public State getState() {
+        return state;
+    }
 }
